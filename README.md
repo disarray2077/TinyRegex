@@ -1,9 +1,8 @@
 # TinyRegex
 
-Small and portable [Regular Expression](https://en.wikipedia.org/wiki/Regular_expression) (regex) library written in BeefLang.
-Heavily based on <https://github.com/kokke/tiny-regex-c>
+Small and portable [Regular Expression](https://en.wikipedia.org/wiki/Regular_expression) (regex) library written in BeefLang, based on <https://github.com/kokke/tiny-regex-c>.
 
-Supports a subset of the syntax and semantics of the Python standard library implementation (the re-module).
+Supports a subset of the syntax and semantics of the Python standard library implementation (the `re` module).
 
 ### Notable features and omissions
 
@@ -11,8 +10,9 @@ Supports a subset of the syntax and semantics of the Python standard library imp
 - No use of dynamic memory allocation (i.e. no calls to `new` / `delete`).
 - To avoid call-stack exhaustion, iterative searching is preferred over recursive by default.
 - All groups are non-capturing groups, there's no support for capturing groups or named capture: `(^P<name>group)` etc.
+  - Groups can be disabled altogether with the `TR_NO_GROUPS` pre-processor flag.
 - Greedy quantifiers can't be used inside of groups.
-- Thorough testing : [exrex](https://github.com/asciimoo/exrex) is used to randomly generate test-cases from regex patterns, which are fed into the regex code for verification.
+- Thorough testing: [exrex](https://github.com/asciimoo/exrex) is used to randomly generate test-cases from regex patterns, which are fed into the regex code for verification.
 
 ### API
 
@@ -27,12 +27,12 @@ public static bool IsMatch(StringView regex, StringView text);
 /// Searches an input string for a substring that matches a regular expression pattern.
 /// @param regex The regular expression pattern to match.
 /// @param text The string to search for a match.
-public static Result<Match, MatchError> Match(StringView regex, StringView text)
+public static Result<Match, MatchError> Match(StringView regex, StringView text);
 
 /// Lazily enumerates over all matches of a regular expression pattern.
 /// @param regex The regular expression pattern to match.
 /// @param text The string to search for a match.
-public static MatchEnumerator AllMatches(StringView regex, StringView text);
+public static MatchEnumerator Matches(StringView regex, StringView text);
 
 /// Replaces the first string that matches a regular expression pattern with a specified replacement string.
 /// @param regex The regular expression pattern to match.
@@ -91,7 +91,18 @@ Example of usage:
 if (Regex.Match(@"[Hh]ello [Ww]orld\s*[!]?", "ahem.. 'hello world !' ..") case .Ok(let match))
 {
   Console.WriteLine($"Matched '{match.Value}' at index {match.Index}, {match.Length} chars long.");
+  // outputs: Matched 'hello world !' at index 8, 13 chars long.
 }
+
+String text = scope .("24h 0x043k 0x4384");
+Regex.ReplaceAll("0x([0-9]{2}){1,2}", text,
+  (match) => {
+    int num = int.Parse(match);
+    match.Clear();
+    (++num).ToString(match);
+  });
+Console.WriteLine(text);
+// outputs: 24h 53k 17285
 ```
 
 For more usage examples I encourage you to look at the code in the `Tests` project.

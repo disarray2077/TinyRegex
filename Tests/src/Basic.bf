@@ -1,5 +1,6 @@
 using System;
 using TinyRegex;
+using internal TinyRegex;
 
 namespace TinyRegexTests
 {
@@ -38,11 +39,6 @@ namespace TinyRegexTests
 			NoMatchAssert!(@"^[\w\.\+\-]+\@[\w]+\.[a-z]{2,3}$", "ab.com");
 			NoMatchAssert!(@"^[\w\.\+\-]+\@[\w]+\.[a-z]{2,3}$", "@ab.com");
 			NoMatchAssert!(@"^[\w\.\+\-]+\@[\w]+\.[a-z]{2,3}$", "a@.com");
-
-			if (Regex.Match(@"[Hh]ello [Ww]orld\s*[!]?", "ahem.. 'hello world !' ..") case .Ok(let match))
-			{
-				Console.WriteLine($"Matched '{match.Value}' at index {match.Index}, {match.Length} chars long.");
-			}
 		}
 
 		[Test]
@@ -80,21 +76,31 @@ namespace TinyRegexTests
 		[Test]
 		public static void GroupTest()
 		{
-			FullMatchAssert!(@"^(abc){2,3}abc$", "abcabcabc");
-			FullMatchAssert!(@"^([abc]{3}){2,3}abc$", "abcabcabc");
-			NoMatchAssert!(@"^(abc){3}abc$", "abcabcabc");
-			PartialMatchAssert!("[01]?[0-9][0-9]?", "0.0.1", 1);
+			if (Regex.NoGroups)
+			{
+				Console.WriteLine("TR_NO_GROUPS defined, test skipped.");
+			}
+			else
+			{
+				FullMatchAssert!(@"^(abc){2,3}abc$", "abcabcabc");
+				FullMatchAssert!(@"^([abc]{3}){2,3}abc$", "abcabcabc");
+				NoMatchAssert!(@"^(abc){3}abc$", "abcabcabc");
+				PartialMatchAssert!("[01]?[0-9][0-9]?", "0.0.1", 1);
+			}
 		}
 
 		[Test]
 		public static void NotImplementedTest()
 		{
 			Test.Assert((Regex.Match(@"a|b", "a") case .Err(let err1)) && err1 == .BranchNotImplemented);
-			Test.Assert((Regex.Match(@"a(a|b)", "a") case .Err(let err2)) && err2 == .BranchNotImplemented);
-			Test.Assert((Regex.Match(@"a(b+)b", "abb") case .Err(let err3)) && err3 == .GreedyGroupNotImplemented);
-			Test.Assert((Regex.Match(@"a(b(c?))b", "abb") case .Err(let err4)) && err4 == .GreedyGroupNotImplemented);
-			Test.Assert((Regex.Match(@"a(b(c)d?)", "abc") case .Err(let err5)) && err5 == .GreedyGroupNotImplemented);
-			FullMatchAssert!(@"a(b(c))d?", "abc");
+			if (!Regex.NoGroups)
+			{
+				Test.Assert((Regex.Match(@"a(a|b)", "a") case .Err(let err2)) && err2 == .BranchNotImplemented);
+				Test.Assert((Regex.Match(@"a(b+)b", "abb") case .Err(let err3)) && err3 == .GreedyGroupNotImplemented);
+				Test.Assert((Regex.Match(@"a(b(c?))b", "abb") case .Err(let err4)) && err4 == .GreedyGroupNotImplemented);
+				Test.Assert((Regex.Match(@"a(b(c)d?)", "abc") case .Err(let err5)) && err5 == .GreedyGroupNotImplemented);
+				FullMatchAssert!(@"a(b(c))d?", "abc");
+			}
 		}
 	}
 }

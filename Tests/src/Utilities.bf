@@ -17,7 +17,7 @@ namespace TinyRegexTests
 				);
 			}
 
-			for (let match in Regex.Matches("0x([0-9A-Fa-f]){2,8}", "0xdeadbeef---0x3k21---0x6c----0x"))
+			for (let match in Regex.Matches("0x[0-9A-Fa-f]{2,8}", "0xdeadbeef---0x3k21---0x6c----0x"))
 			{
 				Test.Assert(
 					match.Value == "0xdeadbeef"
@@ -51,8 +51,8 @@ namespace TinyRegexTests
 
 			Regex.Replace(@"\d+", testStr, "0xFFFFFFFF");
 			Test.Assert(testStr == "int id = 0xFFFFFFFF;");
-			
-			Regex.Replace(@"0x([0-9A-Fa-f]){2,8}", testStr,
+
+			Regex.Replace(@"0x[0-9A-Fa-f]{2,8}", testStr,
 				(match) => {
 					match.Set("0");
 				});

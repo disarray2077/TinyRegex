@@ -7,6 +7,13 @@ namespace TinyRegex
 {
 	public static class Regex
 	{
+		// Used internally for skipping tests
+#if TR_NO_GROUPS
+		internal const bool NoGroups = true;
+#else
+		internal const bool NoGroups = false;
+#endif
+
 		/// Replaces strings that match a regular expression pattern using a custom function.
 		/// @param regex The regular expression pattern to match.
 		/// @param text The string to search for a match and which will be modified.
@@ -16,12 +23,15 @@ namespace TinyRegex
 		{
 			for (let match in Matches(regex, text))
 			{
-				String matchStr = scope String(text.Substring(match.Index, match.Length));
+				String matchStr = scope String(match.Value);
 				replaceFunc(matchStr);
 
-				text.Remove(match.Index, match.Length);
-				text.Insert(match.Index, matchStr);
-				@match.[Friend]Reset(text, match.Index + matchStr.Length);
+				if (matchStr != match.Value)
+				{
+					text.Remove(match.Index, match.Length);
+					text.Insert(match.Index, matchStr);
+					@match.[Friend]Reset(text, match.Index + matchStr.Length);
+				}
 			}
 		}
 
@@ -33,9 +43,12 @@ namespace TinyRegex
 		{
 			for (let match in Matches(regex, text))
 			{
-				text.Remove(match.Index, match.Length);
-				text.Insert(match.Index, replace);
-				@match.[Friend]Reset(text, match.Index + replace.Length);
+				if (replace != match.Value)
+				{
+					text.Remove(match.Index, match.Length);
+					text.Insert(match.Index, replace);
+					@match.[Friend]Reset(text, match.Index + replace.Length);
+				}
 			}
 		}
 
@@ -46,15 +59,18 @@ namespace TinyRegex
 		public static void Replace<TFunc>(StringView regex, String text, TFunc replaceFunc)
 			where TFunc : delegate void(String match)
 		{
-			Match match;
+			Match match = ?;
 			if (!(Regex.Match(regex, text) case .Ok(out match)))
 				return;
 
-			String matchStr = scope String(text.Substring(match.Index, match.Length));
+			String matchStr = scope String(match.Value);
 			replaceFunc(matchStr);
 
-			text.Remove(match.Index, match.Length);
-			text.Insert(match.Index, matchStr);
+			if (matchStr != match.Value)
+			{
+				text.Remove(match.Index, match.Length);
+				text.Insert(match.Index, matchStr);
+			}
 		}
 
 		/// Replaces the first string that matches a regular expression pattern with a specified replacement string.
@@ -63,12 +79,15 @@ namespace TinyRegex
 		/// @param replace The replacement string.
 		public static void Replace(StringView regex, String text, StringView replace)
 		{
-			Match match;
+			Match match = ?;
 			if (!(Regex.Match(regex, text) case .Ok(out match)))
 				return;
 
-			text.Remove(match.Index, match.Length);
-			text.Insert(match.Index, replace);
+			if (replace != match.Value)
+			{
+				text.Remove(match.Index, match.Length);
+				text.Insert(match.Index, replace);
+			}
 		}
 
 		/// Lazily enumerates over all matches of a regular expression pattern.
@@ -133,8 +152,11 @@ namespace TinyRegex
 				if (ch == '|')
 					return .Err(.BranchNotImplemented);
 
+				if (ch == '*' || ch == '+' || ch == '?' || ch == '{')
+					return .Err(.InvalidQuantifierTarget);
+
 				int nodeLength = ?;
-				switch (GetNodeLength(regex, true))
+				switch (GetNodeLength(regex))
 				{
 				case .Ok(out nodeLength):
 					break;
@@ -165,11 +187,14 @@ namespace TinyRegex
 						}
 					case '*':
 						Debug.Assert(GetNodeLength(nextRegex) == 1);
-						(let matched, let outLength) = TryMatchOpt!(MatchQuantifier(regex, nextRegex.Substring(1), text, 1, int.MaxValue, depth));
-						if (matched)
+						switch (MatchQuantifier(regex, nextRegex.Substring(1), text, 1, int.MaxValue, depth))
+						{
+						case .Ok(let outLength):
 							return matchLength + outLength;
-						regex = nextRegex.Substring(1);
-						continue outerLoop;
+						case .Err:
+							regex = nextRegex.Substring(1);
+							continue outerLoop;
+						}
 					case '|':
 						return .Err(.BranchNotImplemented);
 					default:
@@ -196,13 +221,12 @@ namespace TinyRegex
 			return .Err(.NotMatched);
 		}
 
-		private static MatchResult GetNodeLength(StringView regex, bool noQuantifiers = false)
+		private static MatchResult GetNodeLength(StringView regex)
 		{
 			if (regex.IsEmpty)
 				return 0;
 
-			let ch = regex[0];
-			switch (ch)
+			switch (regex[0])
 			{
 			case '[':
 				bool inEscape = false;
@@ -222,8 +246,6 @@ namespace TinyRegex
 				}
 				return .Err(.MissingRightSquareBracket);
 			case '{':
-				if (noQuantifiers)
-					return .Err(.InvalidQuantifierTarget);
 				bool comma = false, num = false;
 				for (int i = 1; i < regex.Length; i++)
 				{
@@ -272,8 +294,6 @@ namespace TinyRegex
 				if (regex.Length == 1)
 					return .Err(.EndsWithBackslash);
 				return 2;
-			case '*', '+', '?' when noQuantifiers:
-				return .Err(.InvalidQuantifierTarget);
 			}
 
 			return 1;
@@ -330,19 +350,23 @@ namespace TinyRegex
 		{
 			Debug.Assert(depth >= 0);
 
-			let regexCh = regex[0];
-			if (regexCh == '(')
+			if (regex[0] == '(')
 			{
+#if !TR_NO_GROUPS
 				// all groups are non-capturing for now, so let's just use this to skip "?:".
-				bool nonCapturing = regex.Length >= 3 && regex[1] == '?' && regex[2] == ':';
-				switch (GetNodeLength(regex, true))
+				let nonCapturing = regex.Length >= 3 && regex[1] == '?' && regex[2] == ':';
+				let regexOffset = nonCapturing ? 3 : 1;
+				switch (GetNodeLength(regex))
 				{
 				case .Ok(let val):
 					var depth;
-					return MatchStartOnly(regex.Substring(nonCapturing ? 3 : 1, (.)val - 1 - (nonCapturing ? 3 : 1)), text, ++depth);
+					return MatchStartOnly(regex.Substring(regexOffset, val - 1 - regexOffset), text, ++depth);
 				case .Err(let err):
 					return .Err(err);
 				}
+#else
+				return .Err(.GroupNotImplemented);
+#endif
 			}
 
 			if (text.IsEmpty)
@@ -382,29 +406,29 @@ namespace TinyRegex
 			}
 		}
 
-		private static Result<bool> TryMatchOne(StringView regex, char8 ch)
+		private static Result<bool> TryMatchOne(StringView regex, char8 textCh)
 		{
 			let regexCh = regex[0];
 			switch (regexCh)
 			{
 			case '\\':
-				return TryMatchEscape(regex[1], ch);
+				return TryMatchEscape(regex[1], textCh);
 			case '.':
-				return ch != '\n';
+				return textCh != '\n';
 			case '[':
 				if (regex[1] == '^')
 				{
-					if (TryMatchCharSet(regex.Substring(2), ch) case .Ok(let val))
+					if (TryMatchCharSet(regex.Substring(2), textCh) case .Ok(let val))
 						return !val;
 					return .Err;
 				}
-				return TryMatchCharSet(regex.Substring(1), ch);
+				return TryMatchCharSet(regex.Substring(1), textCh);
 			default:
-				return regexCh == ch;
+				return regexCh == textCh;
 			}
 		}
 
-		private static Result<bool> TryMatchCharSet(StringView regex, char8 ch)
+		private static Result<bool> TryMatchCharSet(StringView regex, char8 textCh)
 		{
 			for (int i = 0; i < regex.Length;)
 			{
@@ -414,7 +438,7 @@ namespace TinyRegex
 
 				if (regex[i + 1] == '-' && regex[i + 2] != ']')
 				{
-					if (ch >= regexCh && ch <= regex[i + 2])
+					if (textCh >= regexCh && textCh <= regex[i + 2])
 						return true;
 					i += 3;
 				}
@@ -422,16 +446,15 @@ namespace TinyRegex
 				{
 					if (regexCh == '\\')
 					{
-						bool matched = Try!(TryMatchEscape(regex[i + 1], ch));
-						if (matched)
+						if (Try!(TryMatchEscape(regex[i + 1], textCh)))
 							return true;
 						i += 2;
 					}
 					else if (regexCh == '.')
-						return ch != '\n';
+						return textCh != '\n';
 					else
 					{
-						if (regexCh == ch)
+						if (regexCh == textCh)
 							return true;
 						i++;
 					}
@@ -444,9 +467,11 @@ namespace TinyRegex
 
 		private static MatchResult MatchQuantifier(StringView regexLeft, StringView regexRight, StringView text, int minMatches, int maxMatches, int32 depth)
 		{
+#if !TR_NO_GROUPS
 			// There would be no greed if Min == Max.
 			if (depth != 0 && minMatches != maxMatches)
 				return .Err(.GreedyGroupNotImplemented);
+#endif
 
 			var regexRight, text;
 			int matchCount = 0;

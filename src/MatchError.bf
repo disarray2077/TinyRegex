@@ -14,6 +14,7 @@ namespace TinyRegex
 		BadQuantifierFormat,
 		InvalidQuantifierTarget,
 		BranchNotImplemented,
-		GreedyGroupNotImplemented
+		GreedyGroupNotImplemented,
+		GroupNotImplemented // only if TR_NO_GROUPS is defined.
 	}
 }

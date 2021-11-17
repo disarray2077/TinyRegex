@@ -38,6 +38,10 @@ namespace TinyRegex
 		{
 			if (mRegex[0] == '^')
 			{
+				// The start of the string was already matched.
+				if (!mCurMatch.Value.IsNull)
+					return false;
+
 				switch (Regex.[Friend]MatchStartOnly(mRegex.Substring(1), mText))
 				{
 				case .Ok(let matchLength):
