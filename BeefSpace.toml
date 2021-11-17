@@ -1,0 +1,13 @@
+FileVersion = 1
+Projects = {TinyRegex = {Path = "."}, TinyRegexTests = {Path = "Tests"}}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "TinyRegexTests"
+
+[Configs.Test.Win32]
+ConfigSelections = {TinyRegexTests = {Config = "Test"}}
+
+[Configs.Test.Win64]
+AllocStackTraceDepth = 15
+ConfigSelections = {TinyRegex = {Config = "Debug"}, TinyRegexTests = {Config = "Test"}}

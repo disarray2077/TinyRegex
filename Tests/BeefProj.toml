@@ -1,0 +1,6 @@
+FileVersion = 1
+Dependencies = {corlib = "*", TinyRegex = "*"}
+
+[Project]
+Name = "TinyRegexTests"
+StartupObject = "TinyRegexTests.Program"
