@@ -95,7 +95,7 @@ namespace TinyRegexTests
 			Test.Assert((Regex.Match(@"a|b", "a") case .Err(let err1)) && err1 == .BranchNotImplemented);
 			if (!Regex.NoGroups)
 			{
-				Test.Assert((Regex.Match(@"a(a|b)", "a") case .Err(let err2)) && err2 == .BranchNotImplemented);
+				Test.Assert((Regex.Match(@"a(a|b)", "aa") case .Err(let err2)) && err2 == .BranchNotImplemented);
 				Test.Assert((Regex.Match(@"a(b+)b", "abb") case .Err(let err3)) && err3 == .GreedyGroupNotImplemented);
 				Test.Assert((Regex.Match(@"a(b(c?))b", "abb") case .Err(let err4)) && err4 == .GreedyGroupNotImplemented);
 				Test.Assert((Regex.Match(@"a(b(c)d?)", "abc") case .Err(let err5)) && err5 == .GreedyGroupNotImplemented);

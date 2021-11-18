@@ -191,12 +191,12 @@ namespace TinyRegex
 						{
 						case .Ok(let outLength):
 							return matchLength + outLength;
-						case .Err:
+						case .Err(let err):
+							if (err != .NotMatched)
+								return .Err(err);
 							regex = nextRegex.Substring(1);
 							continue outerLoop;
 						}
-					case '|':
-						return .Err(.BranchNotImplemented);
 					default:
 						break;
 					}
