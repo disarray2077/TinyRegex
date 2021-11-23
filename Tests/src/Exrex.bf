@@ -128,7 +128,7 @@ namespace TinyRegexTests
 		{
 			let startInfo = scope ProcessStartInfo();
 			startInfo.SetFileNameAndArguments("python -i");
-			startInfo.SetWorkingDirectory(@"D:\BeefLang\TinyRegex\Tests"); // BROKEN: Directory.GetCurrentDirectory(.. scope .()));
+			startInfo.SetWorkingDirectory(Directory.GetCurrentDirectory(.. scope .()));
 			startInfo.UseShellExecute = false;
 			startInfo.RedirectStandardInput = true;
 			startInfo.RedirectStandardOutput = true;
