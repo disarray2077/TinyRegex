@@ -76,7 +76,7 @@ namespace TinyRegexTests
 				});
 
 			let rand2 = scope Random(524754213);
-			Regex.ReplaceAll(@"<\d+>", testStr,
+			Regex.ReplaceAll(@"<-?\d+>", testStr,
 				(match) => {
 					match.Remove(0, 1);
 					match.RemoveFromEnd(1);
